@@ -1,124 +1,112 @@
 package app.food.myapplication;
 
+import android.Manifest;
+import android.annotation.TargetApi;
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.speech.SpeechRecognizer;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.telecom.TelecomManager;
+import android.telephony.TelephonyManager;
+import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
-import android.widget.Toast;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 
-import net.gotev.speech.GoogleVoiceTypingDisabledException;
-import net.gotev.speech.Logger;
-import net.gotev.speech.Speech;
-import net.gotev.speech.SpeechDelegate;
-import net.gotev.speech.SpeechRecognitionNotAvailable;
-import net.gotev.speech.TextToSpeechCallback;
+import com.ncorti.slidetoact.SlideToActView;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    String newString = "testing";
+    private static final int REQUEST_READ_PHONE_STATE = 101;
+    private SpeechRecognizer mSpeechRecognizer;
+    private Intent mSpeechRecognizerIntent;
+    private boolean mIslistening;
     private static final String TAG = "MainActivity";
+    TextView txtSpeechText;
+    public static final int MULTIPLE_PERMISSIONS = 10;
+    public static final int REQUEST_PERMISSION = 10;
+
+    String[] permissions = new String[]{
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.ANSWER_PHONE_CALLS};
+    TelecomManager tm;
+    SlideToActView btnAcceptCall;
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        try {
-            Bundle extras = getIntent().getExtras();
-            newString = extras.getString("number");
+        initialization();
 
-        } catch (Exception e) {
+    }
+
+
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void initialization() {
+        btnAcceptCall = (SlideToActView) findViewById(R.id.example_gray_on_green);
+        call_permissions();
+        answerCall();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void answerCall() {
+        tm = (TelecomManager) MainActivity.this
+                .getSystemService(Context.TELECOM_SERVICE);
+
+        if (tm == null) {
+            // whether you want to handle this is up to you really
+            Log.e(TAG, "Tm nullll ");
+            throw new NullPointerException("tm == null");
 
         }
-        Log.e(TAG, "Testingggggg-> " );
-        Toast.makeText(MainActivity.this, "" + newString, Toast.LENGTH_SHORT).show();
-        Speech.init(this, getPackageName());
-        Logger.setLogLevel(Logger.LogLevel.DEBUG);
-        Speech.getInstance().say("say something");
-        Logger.setLoggerDelegate(new Logger.LoggerDelegate() {
-            @Override
-            public void error(String tag, String message) {
-                //your own implementation here
-            }
 
+        btnAcceptCall.setOnSlideCompleteListener(new SlideToActView.OnSlideCompleteListener() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
-            public void error(String tag, String message, Throwable exception) {
-                //your own implementation here
-            }
-
-            @Override
-            public void debug(String tag, String message) {
-                //your own implementation here
-            }
-
-            @Override
-            public void info(String tag, String message) {
-                //your own implementation here
+            public void onSlideComplete(@NotNull SlideToActView slideToActView) {
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "Permission problem");
+                    return;
+                }
+                tm.acceptRingingCall();
             }
         });
 
+    }
 
-        try {
-            // you must have android.permission.RECORD_AUDIO granted at this point
-            Speech.getInstance().startListening(new SpeechDelegate() {
-                @Override
-                public void onStartOfSpeech() {
-                    Log.i("speech", "speech recognition is now active");
-                }
-
-                @Override
-                public void onSpeechRmsChanged(float value) {
-                    Log.d("speech", "rms is now: " + value);
-                }
-
-
-                @Override
-                public void onSpeechPartialResults(List<String> results) {
-                    StringBuilder str = new StringBuilder();
-                    for (String res : results) {
-                        str.append(res).append(" ");
-                    }
-
-                    Log.i("speech", "partial result: " + str.toString().trim());
-                }
-
-                @Override
-                public void onSpeechResult(String result) {
-                    Log.i("speech", "result: " + result);
-                }
-            });
-        } catch (SpeechRecognitionNotAvailable exc) {
-            Log.e("speech", "Speech recognition is not available on this device!");
-            // You can prompt the user if he wants to install Google App to have
-            // speech recognition, and then you can simply call:
-            //
-            // SpeechUtil.redirectUserToGoogleAppOnPlayStore(this);
-            //
-            // to redirect the user to the Google App page on Play Store
-        } catch (GoogleVoiceTypingDisabledException exc) {
-            Log.e("speech", "Google voice typing must be enabled!");
+    private void call_permissions() {
+        int result;
+        List<String> listPermissionsNeeded = new ArrayList<>();
+        for (String p : permissions) {
+            result = ContextCompat.checkSelfPermission(getApplicationContext(), p);
+            if (result != PackageManager.PERMISSION_GRANTED) {
+                listPermissionsNeeded.add(p);
+            }
         }
-
-        Speech.getInstance().say("say something", new TextToSpeechCallback() {
-            @Override
-            public void onStart() {
-                Log.i("speech", "speech started");
-            }
-
-            @Override
-            public void onCompleted() {
-                Log.i("speech", "speech completed");
-            }
-
-            @Override
-            public void onError() {
-                Log.i("speech", "speech error");
-            }
-        });
+        if (!listPermissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray
+                    (new String[listPermissionsNeeded.size()]), MULTIPLE_PERMISSIONS);
+        }
+        return;
     }
 
-    @Override
-    protected void onDestroy() {
-        // prevent memory leaks when activity is destroyed
-        super.onDestroy();
-        Speech.getInstance().shutdown();
-    }
+
 }
