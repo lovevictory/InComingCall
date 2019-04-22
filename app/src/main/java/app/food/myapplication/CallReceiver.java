@@ -23,7 +23,7 @@ public class CallReceiver extends PhonecallReceiver {
     @Override
     protected void onOutgoingCallStarted(Context ctx, String number, Date start) {
         Intent i = new Intent();
-        i.setClassName("app.food.myapplication", "app.food.myapplication.MainActivity");
+        i.setClassName("app.food.myapplication", "app.food.myapplication.CallEndActivity");
         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         i.putExtra("number",number);
         ctx.startActivity(i);
